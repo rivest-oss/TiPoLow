@@ -93,7 +93,7 @@ namespace TiPoLow {
 				ErrorOr<u16> e = readU16BE();
 				if(e.error) return e;
 				
-				u16 num = e.value;
+				u16 num = e.value();
 				num = (
 					(num << 8) |
 					(num >> 8)
@@ -106,7 +106,7 @@ namespace TiPoLow {
 				ErrorOr<u32> e = readU32BE();
 				if(e.error) return Error { e.error };
 				
-				u32 num = e.value;
+				u32 num = e.value();
 				
 				return (
 					(num >> 24) |
@@ -120,7 +120,7 @@ namespace TiPoLow {
 				ErrorOr<u64> e = readU64BE();
 				if(e.error) return Error { e.error };
 				
-				u64 num = e.value;
+				u64 num = e.value();
 				
 				return (
 					((num >> 56)	& 0x00000000000000ff) |
@@ -245,7 +245,9 @@ namespace TiPoLow {
 				ErrorOr<u32> raw_value = readU32BE();
 				if(raw_value.error) return Error { raw_value.error };
 				
-				float value = *((float *)(&(raw_value.value)));
+				u32 value_u32 = raw_value.value();
+				float value = *(float *)&value_u32;
+				
 				return value;
 			};
 			
@@ -253,7 +255,9 @@ namespace TiPoLow {
 				ErrorOr<u64> raw_value = readU64BE();
 				if(raw_value.error) return Error { raw_value.error };
 				
-				double value = *((double *)(&(raw_value.value)));
+				u64 value_u64 = raw_value.value();
+				double value = *(double *)&value_u64;
+				
 				return value;
 			};
 			

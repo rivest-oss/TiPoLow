@@ -10,8 +10,7 @@
  *		Provides essential classes, functions, and types.
  *	
  *	Exposed:
- *		* (void)function(int):
- *			Does stuff.
+ *		* [TODO]
  *
  ******************************************************************************/
 
@@ -32,44 +31,76 @@ namespace TiPoLow {
 	typedef intmax_t mi;
 	typedef uintmax_t mu;
 	
-	template<typename Type>
-	Type *alloc_type(mu n) {
-		if(n == 0) return nullptr;
-		Type *x = (Type *)TIPOLOW_ALLOC((mu)sizeof(Type) * n);
-		return x;
-	};
-	
-	template<typename Type>
-	Type* alloc_type(void) { return alloc_type<Type>(1); };
-	
-	template<typename Type>
-	void free_type(Type *ptr) {
-		if(ptr == nullptr) return;
-		TIPOLOW_FREE((void *)ptr);
-	};
-	
 	typedef struct { const char *error; } Error;
 	
 	template<typename Type>
 	class ErrorOr {
+		private:
+			Type val = -1;
+		
 		public:
 			const char *error = nullptr;
-			Type value = 0;
 			
 			ErrorOr(void) {
 				error = nullptr;
-				value = 0;
 			};
 			
 			ErrorOr(Error error_struct) {
 				error = error_struct.error;
-				value = 0;
 			};
 			
 			ErrorOr(Type value_pointer) {
 				error = nullptr;
-				value = value_pointer;
+				val = value_pointer;
 			};
+			
+			Type value(void) { return val; };
+	};
+	
+	template<typename Type>
+	class ErrorOr<Type*> {
+		private:
+			Type *val = nullptr;
+		
+		public:
+			const char *error = nullptr;
+			
+			ErrorOr(void) {
+				error = nullptr;
+			};
+			
+			ErrorOr(Error error_struct) {
+				error = error_struct.error;
+			};
+			
+			ErrorOr(Type *value_pointer) {
+				error = nullptr;
+				val = value_pointer;
+			};
+			
+			Type *value(void) { return val; };
+	};
+	
+	template<typename Type>
+	class ErrorOr<Type&> {
+		public:
+			const char *error = nullptr;
+			Type* value_pointer = nullptr;
+			
+			ErrorOr(void) {
+				error = nullptr;
+			};
+			
+			ErrorOr(Error error_struct) {
+				error = error_struct.error;
+			};
+			
+			ErrorOr(Type *val_ptr) {
+				error = nullptr;
+				value_pointer = val_ptr;
+			};
+			
+			Type& value(void) { return (*value_pointer); };
 	};
 	
 	template<>
@@ -78,6 +109,24 @@ namespace TiPoLow {
 			const char *error = nullptr;
 			
 			ErrorOr(Error error_struct) { error = error_struct.error; };
+	};
+	
+	template<typename Type>
+	ErrorOr<Type*> alloc_type(mu n) {
+		if(n == 0) return Error { "Couldn't allocate sufficient memory" };
+		Type *x = (Type *)TIPOLOW_ALLOC((mu)sizeof(Type) * n);
+		return x;
+	};
+	
+	template<typename Type>
+	Type* alloc_type(void) { return alloc_type<Type>(1); };
+	
+	template<typename Type>
+	ErrorOr<void> free_type(Type *ptr) {
+		if(ptr == nullptr) return Error { nullptr };
+		TIPOLOW_FREE((void *)ptr);
+		
+		return Error { nullptr };
 	};
 };
 
