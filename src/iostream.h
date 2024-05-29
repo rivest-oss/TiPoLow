@@ -16,6 +16,8 @@
 #ifndef __tipolow__iostream__h__
 #define __tipolow__iostream__h__
 
+#include "nuclei.h"
+
 namespace TiPoLow {
 	namespace ios {
 		typedef enum {

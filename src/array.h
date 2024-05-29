@@ -17,6 +17,8 @@
 #ifndef __tipolow__array__h__
 #define __tipolow__array__h__
 
+#include "nuclei.h"
+
 namespace TiPoLow {
 	template<typename Type>
 	class DArray {
