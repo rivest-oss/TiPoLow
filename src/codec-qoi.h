@@ -40,11 +40,13 @@ namespace TiPoLow {
 			private:
 				BaseIOStream *rs = nullptr;
 				image_t *img = nullptr;
-				bool is_header_ready = false;
+				bool is_header_ready = false, stop_already = false;
 				
 				u8 pixels_index[256];
 				u32 pixel_i = 0;
 				u32 pixels = 0;
+				
+				u8 r, g, b, a;
 				
 				ErrorOr<void> read_header(void) {
 					ErrorOr<u32> e_sign = rs->readU32BE();
@@ -90,13 +92,143 @@ namespace TiPoLow {
 					return Error { nullptr };
 				};
 				
-				inline u16 get_index_pos(u8 r, u8 g, u8 b, u8 a) {
-					return (((r * 3 + g * 5 + b * 7 + a * 11) & 0x3f) << 2);
+				u16 get_index_pos(void) {
+					return ((r * 3 + g * 5 + b * 7 + a * 11) & 0x3f);
 				};
 				
 				ErrorOr<bool> read_packet(void) {
-					// [TODO]
-					return Error { "[TODO]" };
+					if(stop_already) return false;
+					
+					ErrorOr<u8> e_byte = rs->readU8();
+					if(e_byte.error) return Error { e_byte.error };
+					
+					// If detects that all pixels have been written, it should
+					// check if the following eight bytes are:
+					// * seven (0x00) bytes.
+					// * one (0x01) byte.
+					// 
+					// If they are not those bytes, return error.
+					// If it's not EOF, don't care, only care if the last bytes
+					// are the right ones.
+					
+					if((e_byte.value() & 0xfe) == 0xfe) {
+						// QOI_OP_RGB or QOI_OP_RGBA.
+						bool has_alpha_component = (e_byte.value() & 0x01);
+						
+						// QOI_OP_RGB
+						e_byte = rs->readU8();
+						if(e_byte.error) return Error { e_byte.error };
+						r = e_byte.value();
+						
+						e_byte = rs->readU8();
+						if(e_byte.error) return Error { e_byte.error };
+						g = e_byte.value();
+						
+						e_byte = rs->readU8();
+						if(e_byte.error) return Error { e_byte.error };
+						b = e_byte.value();
+						
+						if(has_alpha_component) {
+							e_byte = rs->readU8();
+							if(e_byte.error) return Error { e_byte.error };
+							a = e_byte.value();
+						}
+					} else {
+						switch(e_byte.value() >> 6) {
+							case 0b00: {
+								// QOI_OP_INDEX
+								u16 i = ((e_byte.value() & 0x3f) << 2);
+								
+								r = pixels_index[i | 0x0];
+								g = pixels_index[i | 0x1];
+								b = pixels_index[i | 0x2];
+								a = pixels_index[i | 0x3];
+								
+								break;
+							};
+							
+							case 0b01: {
+								// QOI_OP_DIFF
+								i16 dr = (-2), dg = (-2), db = (-2);
+								
+								dr += (i16)((e_byte.value() & 0x30) >> 4);
+								dg += (i16)((e_byte.value() & 0x0c) >> 2);
+								db += (i16)(e_byte.value() & 0x03);
+								
+								r += dr;
+								g += dg;
+								b += db;
+								
+								break;
+							};
+							
+							case 0b10: {
+								// QOI_OP_LUMA
+								
+								i16 dr = (-8), dg = (-32), db = (-8);
+								dg += (i16)(e_byte.value() & 0x3f);
+								
+								e_byte = rs->readU8();
+								if(e_byte.error) return Error { e_byte.error };
+								
+								dr += (i16)(e_byte.value() >> 4);
+								db += (i16)(e_byte.value() & 0x0f);
+								
+								dr += dg;
+								db += db;
+								
+								r += dr;
+								g += dg;
+								b += db;
+								
+								break;
+							};
+							
+							case 0b11: {
+								// QOI_OP_RUN
+								
+								u16 rep_n = (u16)(e_byte.value() & 0x3f);
+								
+								for(u16 i = 0; i < rep_n; i++) {
+									u8 *p = img->img_ptr->data_pointer();
+									
+									p[(pixel_i << 2) | 0x0] = r;
+									p[(pixel_i << 2) | 0x1] = g;
+									p[(pixel_i << 2) | 0x2] = b;
+									p[(pixel_i << 2) | 0x3] = a;
+									
+									pixel_i++;
+									
+									if(pixel_i >= pixels) {
+										stop_already = true;
+										return false;
+									}
+								};
+								
+								break;
+							};
+						};
+					}
+					
+					u16 i = (get_index_pos() << 2);
+					pixels_index[i | 0x0] = r;
+					pixels_index[i | 0x1] = g;
+					pixels_index[i | 0x2] = b;
+					pixels_index[i | 0x3] = a;
+					
+					img->img_ptr->data_pointer()[(pixel_i << 2) | 0x0] = r;
+					img->img_ptr->data_pointer()[(pixel_i << 2) | 0x1] = g;
+					img->img_ptr->data_pointer()[(pixel_i << 2) | 0x2] = b;
+					img->img_ptr->data_pointer()[(pixel_i << 2) | 0x3] = a;
+					
+					pixel_i++;
+					
+					if(pixel_i >= pixels) {
+						stop_already = true;
+						return false;
+					}
+					
+					return true;
 				};
 			
 			public:
@@ -115,6 +247,7 @@ namespace TiPoLow {
 						pixels_index[i] = 0x00;
 					
 					pixel_i = 0;
+					r = 0x00, g = 0x00, b = 0x00, a = 0xff;
 					
 					return Error { nullptr };
 				};
@@ -137,6 +270,7 @@ namespace TiPoLow {
 				ErrorOr<void> deinit(void) {
 					rs = nullptr;
 					is_header_ready = false;
+					stop_already = false;
 					
 					return Error { nullptr };
 				};
