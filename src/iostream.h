@@ -19,29 +19,27 @@
 #include "nuclei.h"
 
 namespace TiPoLow {
-	namespace ios {
-		typedef enum {
-			beg = 1,
-			cur = 2,
-			end = 3,
-		} seekdir;
-	};
+	typedef enum {
+		beg = 1,
+		cur = 2,
+		end = 3,
+	} seekdir;
 	
 	class BaseIOStream {
 		public:
 			virtual mu tellg(void) = 0;
 			virtual void seekg(mu pos) = 0;
-			virtual void seekg(mi off, ios::seekdir dir) = 0;
+			virtual void seekg(mi off, seekdir dir) = 0;
 			
 			virtual mu tellp(void) = 0;
 			virtual void seekp(mu pos) = 0;
-			virtual void seekp(mi off, ios::seekdir dir) = 0;
+			virtual void seekp(mi off, seekdir dir) = 0;
 			
 			virtual ErrorOr<void> read(u8 *s, mu n) = 0;
 			virtual ErrorOr<void> write(u8 *s, mu n) = 0;
 			
-			void skipg(mi pos) { seekg(pos, ios::seekdir::cur); };
-			void skipp(mi pos) { seekp(pos, ios::seekdir::cur); };
+			void skipg(mi pos) { seekg(pos, seekdir::cur); };
+			void skipp(mi pos) { seekp(pos, seekdir::cur); };
 			
 			ErrorOr<u8> readU8(void) {
 				u8 buff[1];

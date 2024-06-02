@@ -70,6 +70,17 @@ namespace TiPoLow {
 				ErrorOr<void> close(void);
 				
 				bool is_open(void);
+				
+				mu tellg(void);
+				void seekg(mu pos);
+				void seekg(mi off, seekdir dir);
+				
+				mu tellp(void);
+				void seekp(mu pos);
+				void seekp(mi off, seekdir dir);
+				
+				ErrorOr<void> read(u8 *s, mu n);
+				ErrorOr<void> write(u8 *s, mu n);
 		};
 		
 		class BaseFileInterface {
