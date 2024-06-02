@@ -17,6 +17,24 @@
 #ifndef __tipolow__nuclei__h__
 #define __tipolow__nuclei__h__
 
+#ifndef TIPOLOW_NO_STDLIB
+	#include <stdlib.h>
+	
+	#define TIPOLOW_ALLOC malloc
+	#define TIPOLOW_FREE free
+#endif
+
+#ifndef TIPOLOW_NO_STDINT
+	#include <stdint.h>
+#endif
+
+#ifdef TIPOLOW_DEBUG
+	#include <stdio.h>
+	#define TIPOLOW_PRINTF std::printf
+#else
+	#define TIPOLOW_PRINTF(...) (void)__VA_ARGS__;
+#endif
+
 namespace TiPoLow {
 	typedef uint8_t u8;
 	typedef uint16_t u16;
@@ -36,7 +54,7 @@ namespace TiPoLow {
 	template<typename Type>
 	class ErrorOr {
 		private:
-			Type val = -1;
+			Type val;
 		
 		public:
 			const char *error = nullptr;

@@ -20,17 +20,19 @@
 #include "iostream.h"
 
 namespace TiPoLow {
-	namespace ios {
-		typedef enum _openmode {
-			in = 1 << 0,
-			out = 1 << 1,
-		} openmode;
-	};
+	typedef enum _openmode {
+		in = 1 << 0,
+		out = 1 << 1,
+	} openmode;
 	
 	namespace FS {
-		typedef enum _permissions {
-			// [TODO]
-		} permissions;
+		class Perms {
+			public:
+				u16 p = 0xffff;
+				
+				Perms(u16 val) { p = val; };
+				Perms(void) {};
+		};
 		
 		typedef struct {
 			bool	found		= false;
@@ -45,6 +47,9 @@ namespace TiPoLow {
 			
 			// https://en.cppreference.com/w/cpp/filesystem/file_size
 			mu		file_size	= 0;
+			
+			// https://en.cppreference.com/w/cpp/filesystem/perms
+			Perms	perms;
 		} FileStatus;
 		
 		typedef struct {
@@ -53,13 +58,27 @@ namespace TiPoLow {
 			mu		available	= 0;
 		} FileSystemSpace;
 		
+		class BaseFileStream : public BaseIOStream {
+			private:
+				// Implementation specific thingy.
+				void *__i_thing = nullptr;
+			
+			public:
+				BaseFileStream() {};
+				
+				ErrorOr<void> open(u16 mode);
+				ErrorOr<void> close(void);
+				
+				bool is_open(void);
+		};
+		
 		class BaseFileInterface {
 			public:
 				const char *__p_path = nullptr;
 				
 				// Implementation specific thingy.
 				void *__i_path = nullptr;
-				FileStatus __i_status;
+				FileStatus __i_stat;
 				
 				BaseFileInterface(const char *path) { set_path(path); };
 				BaseFileInterface(void) {};
@@ -86,6 +105,16 @@ namespace TiPoLow {
 				// https://en.cppreference.com/w/cpp/filesystem/
 				// temp_directory_path
 				ErrorOr<const char *> temp_directory_path(void);
+				
+				ErrorOr<BaseFileStream*> open(u16 mode) {
+					ErrorOr<BaseFileStream*> f = alloc_type<BaseFileStream>(1);
+					if(f.error) return Error { f.error };
+					
+					ErrorOr<void> e = f.value()->open(mode);
+					if(e.error) return Error { e.error };
+					
+					return f;
+				};
 		};
 	};
 };
